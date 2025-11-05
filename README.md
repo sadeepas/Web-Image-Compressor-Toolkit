@@ -72,10 +72,6 @@ Real-time preview with original vs. optimized comparison
 
 Image renaming and custom file ordering before export
 
-Live Demo
-
-(Add your deployment link here — for example, GitHub Pages, Netlify, or Vercel)
-Demo: View Live Project
 
 License
 
