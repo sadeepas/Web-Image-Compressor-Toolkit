@@ -1,48 +1,83 @@
 # Web-Image-Compressor-Toolkit
 This is an advanced, client-side web tool for image optimization. It allows users to instantly compress, convert, and resize images in their browser using HTML/JS/Tailwind, guaranteeing maximum privacy since no files are ever uploaded.
 
-🚀 Advanced Image Compressor & Converter
+Advanced Image Compressor & Converter
 
-An open-source, web-based tool built with vanilla JavaScript and Tailwind CSS for quickly compressing, resizing, and converting images to optimize them for web performance.
+Advanced Image Compressor & Converter is an open-source, web-based application built with Vanilla JavaScript and Tailwind CSS. It enables fast and privacy-respecting image compression, resizing, and format conversion directly within the browser — without requiring any server-side processing.
 
-Project Description
+Overview
 
-This single-page application (SPA) allows users to batch process images using the browser's native capabilities (<canvas> and toBlob()). It focuses on delivering maximum compression (especially using the modern WebP format) while maintaining a highly responsive and modern user interface.
+The Advanced Image Compressor & Converter is a lightweight single-page application (SPA) that simplifies the process of optimizing images for the web.
+By utilizing the browser’s native <canvas> and toBlob() APIs, it performs all operations locally, providing maximum efficiency, strong privacy, and high image quality.
+
+This tool is designed for developers, designers, and content creators who need to efficiently prepare images for modern, high-performance websites.
 
 Key Features
 
-Format Conversion: Convert images to WebP, JPEG, or PNG formats.
+Format Conversion – Convert images to WebP, JPEG, or PNG formats.
 
-Lossy Compression: Adjustable quality slider for JPEG and WebP to control file size reduction.
+Adjustable Compression – Control output quality with an adjustable compression slider for lossy formats (JPEG and WebP).
 
-Smart Resizing: Automatically resize images proportionally based on maximum width/height inputs.
+Smart Resizing – Maintain aspect ratios automatically when resizing images based on user-defined dimensions.
 
-Drag-and-Drop Interface: Easy file uploads via drag-and-drop or file selection.
+Drag-and-Drop Uploads – Add images easily using drag-and-drop or a traditional file selection dialog.
 
-Batch Processing: Handle multiple images simultaneously.
+Batch Processing – Process multiple images simultaneously for fast bulk optimization.
 
-ZIP Download: Download all processed images in a single .zip file.
+ZIP Download – Export all processed images as a single ZIP archive using JSZip.
 
-Dark Mode: Supports a togglable dark mode for enhanced accessibility.
+Dark Mode Support – Toggle between light and dark themes for user comfort.
 
-Responsiveness: Fully optimized for desktop, tablet, and mobile viewing.
+Responsive Layout – Optimized for desktop, tablet, and mobile devices.
 
-Technologies Used
+Local Processing – All image processing is handled within the browser; no data is uploaded or stored externally.
 
-HTML5
+| Technology                    | Purpose                                    |
+| ----------------------------- | ------------------------------------------ |
+| **HTML5**                     | Core structure and image rendering         |
+| **Tailwind CSS**              | Responsive, utility-first styling          |
+| **Vanilla JavaScript (ES6+)** | Core logic and image manipulation          |
+| **JSZip**                     | ZIP archive generation for batch downloads |
 
-Tailwind CSS: For rapid, responsive, and utility-first styling.
 
-Vanilla JavaScript (ES6+): Handles all image processing logic.
+How It Works
 
-JSZip: Used for generating the final "Download All" ZIP archive.
+Users upload images via drag-and-drop or file selection.
 
-Author & Contact
+The application uses the Canvas API to render and process each image in memory.
 
-This project was built by:
+Users can adjust compression quality and resizing parameters.
 
-Name: SADEEPA LAKSHAN
+The processed images are generated instantly on the client side.
 
-GitHub: (Your GitHub profile link here)
+Users can download the optimized images individually or bundled as a ZIP file.
 
+All operations occur locally within the browser, ensuring fast performance and full data privacy.
+
+Author
+
+Developed by:
+Sadeepa Lakshan
 Email: sadeepapemasiri2@gmail.com
+
+Future Enhancements
+
+AI-powered automatic quality optimization
+
+Support for additional formats such as HEIC and AVIF
+
+Image cropping and aspect-ratio adjustment
+
+Real-time preview with original vs. optimized comparison
+
+Image renaming and custom file ordering before export
+
+Live Demo
+
+(Add your deployment link here — for example, GitHub Pages, Netlify, or Vercel)
+Demo: View Live Project
+
+License
+
+This project is licensed under the MIT License.
+You are free to use, modify, and distribute this software for both personal and commercial purposes.
