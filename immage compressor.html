@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Image Compressor & Converter</title>
+    <!-- Website Icon (Favicon) - using a base64 SVG for the rocket emoji -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load JSZip for "Download All" functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <style>
+        /* Custom scrollbar styling for better aesthetics */
+        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #9ca3af; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background-color: #f7fafc; }
+        .dark .custom-scroll::-webkit-scrollbar-thumb { background-color: #4b5563; }
+        .dark .custom-scroll::-webkit-scrollbar-track { background-color: #1f2937; }
+        
+        /* Hide the file input visually but keep it accessible */
+        #fileInput { width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1; }
+
+        /* Spinner for Loading Overlay */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Custom style for range input (for better appearance across browsers) */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #e5e7eb;
+            border-radius: 9999px;
+            transition: background 0.2s ease;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #1f6fe5;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+        input[type=range]:hover::-webkit-slider-thumb {
+            transform: scale(1.1);
+        }
+        .dark input[type=range] {
+            background: #4b5563;
+        }
+        .dark input[type=range]::-webkit-slider-thumb {
+            background: #3b82f6; /* A slightly brighter blue for dark mode visibility */
+        }
+    </style>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable dark mode via the 'dark' class on <html>
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-blue': '#1f6fe5',
+                        'secondary-gray': '#f3f4f6',
+                        'dark-bg': '#0f172a', /* Darker background, slate 900 */
+                        'dark-card': '#1e293b', /* Darker card, slate 800 */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 dark:bg-dark-bg min-h-screen font-sans transition-colors duration-500">
+
+    <!-- Custom Notification/Message Box -->
+    <div id="messageBox" class="fixed top-4 right-4 z-50 p-4 text-white rounded-xl shadow-2xl transition-opacity duration-300 opacity-0 pointer-events-none" role="alert"></div>
+
+    <!-- Full Screen Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-40 flex items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="flex flex-col items-center bg-white dark:bg-dark-card p-8 rounded-2xl shadow-2xl text-gray-800 dark:text-gray-100 transform scale-100 transition-transform duration-300">
+            <svg class="spinner w-10 h-10 text-primary-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-4 font-extrabold text-xl">Processing Images...</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Optimizing file quality and size.</p>
+        </div>
+    </div>
+
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8 bg-white dark:bg-dark-card p-6 rounded-2xl shadow-xl transition-colors duration-500">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-gray-800 dark:text-gray-100">
+                    🚀 Image Optimizer
+                </h1>
+                <p class="mt-1 text-gray-500 dark:text-gray-400 text-base">
+                    Compress, resize, and convert for the web.
+                </p>
+            </div>
+            <button id="themeToggle" onclick="toggleTheme()" class="text-2xl p-3 rounded-full bg-secondary-gray dark:bg-gray-700 shadow-lg hover:scale-110 transition-transform duration-300" aria-label="Toggle theme">
+                ☀️
+            </button>
+        </header>
+
+        <!-- Main Compression Card (Enhanced Shadow) -->
+        <div class="bg-white dark:bg-dark-card p-6 md:p-10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-t-8 border-primary-blue transition-colors duration-500">
+            
+            <!-- Settings Panel -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 border-b pb-6 border-gray-200 dark:border-gray-700">
+                
+                <!-- Format Selector -->
+                <div class="col-span-1">
+                    <label for="outputFormat" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Output Format</label>
+                    <select id="outputFormat" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-inner focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200 ease-in-out bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 appearance-none">
+                        <option value="image/webp">WebP (Modern, best compression)</option>
+                        <option value="image/jpeg">JPEG (Lossy)</option>
+                        <option value="image/png">PNG (Lossless)</option>
+                    </select>
+                </div>
+
+                <!-- Quality Slider -->
+                <div class="col-span-1 md:col-span-2">
+                    <label for="qualitySlider" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex justify-between">
+                        <span>Compression Quality (1 - 100)</span>
+                        <span id="qualityValue" class="font-extrabold text-primary-blue">80%</span>
+                    </label>
+                    <input type="range" id="qualitySlider" min="1" max="100" value="80" class="w-full range-lg" oninput="document.getElementById('qualityValue').textContent = this.value + '%'">
+                    <p class="text-xs text-gray-400 mt-2">Lower quality = smaller file size (JPEG/WebP only)</p>
+                </div>
+            </div>
+
+            <!-- Resizing Panel -->
+            <div class="mb-8 border-b pb-6 border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-extrabold text-gray-700 dark:text-gray-300 mb-4">Optional Resizing (Max Dimensions)</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="maxWidth" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Width (px)</label>
+                        <input type="number" id="maxWidth" placeholder="Original width" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 shadow-inner focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200" min="1">
+                    </div>
+                    <div>
+                        <label for="maxHeight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Height (px)</label>
+                        <input type="number" id="maxHeight" placeholder="Original height" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 shadow-inner focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200" min="1">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">Images will be scaled down proportionally if they exceed these values.</p>
+            </div>
+
+            <!-- File Input Area (Drop Zone) -->
+            <div id="dropArea" class="border-4 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-10 text-center cursor-pointer hover:border-primary-blue hover:bg-indigo-50 dark:hover:bg-gray-800 transition-all duration-300 ease-in-out mb-8 shadow-inner">
+                <input type="file" id="fileInput" accept="image/*" multiple>
+                
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-14 h-14 mx-auto text-primary-blue mb-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+
+                <p class="text-gray-700 dark:text-gray-200 font-extrabold text-xl">
+                    Drag & Drop Images Here
+                </p>
+                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                    or
+                </p>
+                <button onclick="document.getElementById('fileInput').click()" class="mt-4 inline-flex items-center px-8 py-3 border border-transparent text-base font-semibold rounded-full shadow-lg text-white bg-primary-blue hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-primary-blue/50 transition-all duration-200 transform hover:scale-[1.02]">
+                    Browse Files
+                </button>
+            </div>
+
+            <!-- Action Buttons (Recompress and Download All) -->
+            <div id="actionButtons" class="hidden flex flex-col sm:flex-row gap-4 mb-6">
+                <button id="recompressButton" class="flex-1 px-6 py-3 text-base font-semibold rounded-xl shadow-md text-primary-blue bg-indigo-100 hover:bg-indigo-200 dark:bg-gray-700 dark:text-indigo-300 dark:hover:bg-gray-600 transition-all duration-200 transform hover:scale-[1.01]" onclick="handleFiles(originalFiles, true)">
+                    🔄 Recompress with New Settings
+                </button>
+                <button id="downloadAllButton" class="flex-1 px-6 py-3 text-base font-semibold rounded-xl shadow-lg text-white bg-green-600 hover:bg-green-700 transition-all duration-200 transform hover:scale-[1.01]" onclick="downloadAll()">
+                    📦 Download All as ZIP
+                </button>
+            </div>
+
+            <!-- Results Area -->
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4 border-b pb-2 border-gray-200 dark:border-gray-700">Compression Results</h2>
+            <div id="resultsContainer" class="space-y-4 max-h-96 overflow-y-auto custom-scroll">
+                <p id="initialMessage" class="text-gray-500 dark:text-gray-400 italic p-4">No files selected yet. Upload an image to begin optimization.</p>
+            </div>
+
+        </div>
+        
+        <!-- Footer -->
+        <footer class="mt-8 text-center text-gray-500 dark:text-gray-400 text-sm p-4">
+            <p>&copy; <span id="currentYear"></span> SADEEPA LAKSHAN. All rights reserved. | Built for the modern web.</p>
+        </footer>
+    </div>
+
+    <!-- Hidden Canvas for Image Processing -->
+    <canvas id="canvas" style="display: none;"></canvas>
+
+    <script>
+        // Global references and state
+        let originalFiles = []; // Stores the files initially uploaded for recompression
+        const fileInput = document.getElementById('fileInput');
+        const dropArea = document.getElementById('dropArea');
+        const outputFormatSelect = document.getElementById('outputFormat');
+        const qualitySlider = document.getElementById('qualitySlider');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const actionButtons = document.getElementById('actionButtons');
+        const initialMessage = document.getElementById('initialMessage');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const messageBox = document.getElementById('messageBox');
+
+        // --- THEME LOGIC ---
+        const htmlElement = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+
+        // Apply theme on load
+        const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        if (currentTheme === 'dark') {
+            htmlElement.classList.add('dark');
+        }
+
+        const toggleTheme = () => {
+            if (htmlElement.classList.contains('dark')) {
+                htmlElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                themeToggle.textContent = '🌙';
+            } else {
+                htmlElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                themeToggle.textContent = '☀️';
+            }
+        };
+
+
+        // --- NOTIFICATION HANDLER ---
+        const showMessageBox = (message, colorClass) => {
+            messageBox.textContent = message;
+            messageBox.className = `fixed top-4 right-4 z-50 p-4 text-white rounded-xl shadow-2xl transition-opacity duration-300 ${colorClass} opacity-100 pointer-events-auto`;
+            
+            // Auto hide after 4 seconds
+            setTimeout(() => {
+                messageBox.classList.remove('opacity-100', 'pointer-events-auto');
+                messageBox.classList.add('opacity-0', 'pointer-events-none');
+            }, 4000);
+        };
+
+        // --- CORE COMPRESSION FUNCTION ---
+        const compressImage = (file, mimeType, quality) => {
+            return new Promise((resolve, reject) => {
+                
+                // --- FIX FOR PNG BLOAT: Bypass canvas if PNG is output and no resizing is requested ---
+                const maxWidth = parseInt(document.getElementById('maxWidth').value) || 0;
+                const maxHeight = parseInt(document.getElementById('maxHeight').value) || 0;
+                const needsResizing = (maxWidth > 0 || maxHeight > 0);
+                const isPngToPng = file.type === 'image/png' && mimeType === 'image/png';
+
+                if (isPngToPng && !needsResizing) {
+                    // If it's PNG -> PNG and no size change is requested, return the original file directly.
+                    // This prevents the browser's canvas encoder from bloating pre-optimized PNGs.
+                    resolve(file);
+                    return;
+                }
+                // --- END FIX ---
+                
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Use createImageBitmap for more efficient image loading
+                        createImageBitmap(img).then(imageBitmap => {
+                            let width = imageBitmap.width;
+                            let height = imageBitmap.height;
+                            
+                            // Resizing Logic: Check if image exceeds limits and scale down proportionally
+                            if (needsResizing) {
+                                const ratioW = maxWidth > 0 ? maxWidth / width : 1;
+                                const ratioH = maxHeight > 0 ? maxHeight / height : 1;
+                                const ratio = Math.min(ratioW, ratioH);
+                                
+                                // Only scale if the ratio is less than 1 (i.e., we need to shrink)
+                                if (ratio < 1) {
+                                    width *= ratio;
+                                    height *= ratio;
+                                }
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            // Drawing to canvas
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(imageBitmap, 0, 0, width, height);
+
+                            // Convert canvas content to a Blob
+                            canvas.toBlob((blob) => {
+                                if (blob) {
+                                    resolve(blob);
+                                } else {
+                                    reject(new Error(`Failed to create compressed blob for ${mimeType}.`));
+                                }
+                            }, mimeType, quality);
+                        }).catch(err => {
+                            reject(new Error("Image decoding failed."));
+                        });
+                    };
+                    img.onerror = () => reject(new Error("Could not load image source."));
+                    img.src = e.target.result;
+                };
+
+                reader.onerror = () => reject(new Error("FileReader could not read file."));
+                reader.readAsDataURL(file);
+            });
+        };
+
+        // --- DELETE ITEM LOGIC ---
+        const deleteResultItem = (button) => {
+            const resultItem = button.closest('[data-download-url]');
+            if (resultItem) {
+                // Fade out the element before removing it
+                resultItem.style.opacity = 0;
+                resultItem.style.transform = 'translateX(-20px)';
+                setTimeout(() => {
+                    const url = resultItem.dataset.downloadUrl;
+                    URL.revokeObjectURL(url); // Clean up memory
+                    resultItem.remove();
+                    
+                    // Check if results container is empty to hide action buttons
+                    if (resultsContainer.children.length === 0) {
+                        actionButtons.classList.add('hidden');
+                        initialMessage.classList.remove('hidden');
+                    }
+                    showMessageBox("File removed and memory cleaned up.", "bg-gray-500");
+                }, 300); // Duration matches CSS transition
+            }
+        };
+
+        // --- DOWNLOAD ALL LOGIC (JSZip) ---
+        const downloadAll = async () => {
+            const zip = new JSZip();
+            // Select only items that have successfully compressed and have a download URL
+            const resultItems = resultsContainer.querySelectorAll('[data-download-url]');
+
+            if (resultItems.length === 0) {
+                showMessageBox("No successfully compressed files to download.", "bg-yellow-500");
+                return;
+            }
+
+            loadingOverlay.classList.add('opacity-100', 'pointer-events-auto');
+
+            try {
+                // Fetch each blob and add it to the zip file
+                for (const item of resultItems) {
+                    const url = item.dataset.downloadUrl;
+                    const fileName = item.dataset.fileName;
+                    // Use fetch to convert the temporary object URL back to a Blob
+                    const blob = await fetch(url).then(r => r.blob());
+                    zip.file(fileName, blob);
+                }
+
+                // Generate and download the zip file
+                const content = await zip.generateAsync({ type: "blob" });
+                const zipFileName = `optimized_images_${new Date().toISOString().slice(0, 10)}.zip`;
+                
+                // Trigger download
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(content);
+                a.download = zipFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                showMessageBox("All files packaged and download started!", "bg-green-600");
+
+            } catch (error) {
+                showMessageBox("Error creating ZIP file: " + error.message, "bg-red-600");
+                console.error("ZIP Error:", error);
+            } finally {
+                loadingOverlay.classList.remove('opacity-100', 'pointer-events-auto');
+            }
+        };
+
+        // --- UI UPDATE & PROCESSING LOGIC ---
+        const handleFiles = async (files, isRecompress = false) => {
+            if (files.length === 0) return;
+
+            // Revoke all existing URLs to clean up memory before starting
+            resultsContainer.querySelectorAll('[data-download-url]').forEach(item => {
+                URL.revokeObjectURL(item.dataset.downloadUrl);
+            });
+
+
+            // If it's a new upload, store the files for recompression
+            if (!isRecompress) {
+                originalFiles = Array.from(files);
+            }
+
+            // Show loading screen and prepare UI
+            initialMessage.classList.add('hidden');
+            resultsContainer.innerHTML = '';
+            actionButtons.classList.add('hidden');
+            loadingOverlay.classList.add('opacity-100', 'pointer-events-auto');
+
+            const selectedMimeType = outputFormatSelect.value;
+            // Convert quality from 1-100 to 0.0-1.0
+            const compressionQuality = parseFloat(qualitySlider.value) / 100;
+            
+            let successfulCompressions = 0;
+
+            for (const file of originalFiles) {
+                if (!file.type.startsWith('image/')) continue;
+                
+                const originalSize = file.size;
+                
+                // Determine output extension based on MIME type
+                let outputExtension = 'file'; 
+                if (selectedMimeType === 'image/jpeg') outputExtension = 'jpg';
+                else if (selectedMimeType === 'image/webp') outputExtension = 'webp';
+                else if (selectedMimeType === 'image/png') outputExtension = 'png';
+
+                // Create a unique output filename
+                const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                const outputFileName = `${baseName}.${outputExtension}`;
+
+                try {
+                    const compressedBlob = await compressImage(file, selectedMimeType, compressionQuality);
+                    const compressedSize = compressedBlob.size;
+                    const sizeDifference = originalSize - compressedSize;
+                    const reductionPercentage = ((sizeDifference / originalSize) * 100).toFixed(1);
+
+                    const resultHtml = generateResultItem(
+                        outputFileName,
+                        originalSize,
+                        compressedSize,
+                        reductionPercentage,
+                        URL.createObjectURL(compressedBlob)
+                    );
+                    resultsContainer.insertAdjacentHTML('beforeend', resultHtml);
+                    successfulCompressions++;
+
+                } catch (error) {
+                    const errorHtml = generateErrorItem(file.name, error.message);
+                    resultsContainer.insertAdjacentHTML('beforeend', errorHtml);
+                    console.error(`Error processing file ${file.name}:`, error);
+                }
+            }
+
+            // Final UI cleanup
+            loadingOverlay.classList.remove('opacity-100', 'pointer-events-auto');
+
+            if (successfulCompressions > 0) {
+                actionButtons.classList.remove('hidden');
+                showMessageBox(`Finished processing ${successfulCompressions} file(s)!`, "bg-primary-blue");
+            } else {
+                resultsContainer.innerHTML = generateErrorItem('Batch Processing', 'No images were successfully processed. Please check file types and try again.');
+                initialMessage.classList.remove('hidden');
+            }
+        };
+
+        // --- HELPER FUNCTIONS ---
+        const formatSize = (bytes) => {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        const generateResultItem = (fileName, originalSize, compressedSize, reduction, downloadUrl) => {
+            const isReduced = reduction > 0;
+            const isIncreased = reduction < 0;
+            const sizeColor = isReduced ? 'text-green-500' : (isIncreased ? 'text-red-500' : 'text-yellow-500');
+            const reductionValue = isReduced ? reduction : Math.abs(reduction);
+
+            let iconSvg;
+            if (fileName.toLowerCase().endsWith('.webp')) {
+                // WebP Icon
+                iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 20c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg>`;
+            } else if (fileName.toLowerCase().endsWith('.jpg') || fileName.toLowerCase().endsWith('.jpeg')) {
+                // JPEG Icon
+                iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-amber-500"><path d="M12 9a3.75 3.75 0 1 0 0 7.5A3.75 3.75 0 0 0 12 9Z" /><path fill-rule="evenodd" d="M9.344 3.071a49.52 49.52 0 0 0 5.312 0c2.28 0 4.373 1.188 5.56 3.123 1.187 1.934 1.187 4.381 0 6.315C18.977 14.634 16.884 15.822 14.604 15.822H9.396c-2.28 0-4.373-1.188-5.56-3.123-1.187-1.934-1.187-4.381 0-6.315 1.188-1.935 3.28-3.124 5.56-3.124ZM12 4.5c-1.252 0-2.25.998-2.25 2.25S10.748 9 12 9s2.25-.998 2.25-2.25S13.252 4.5 12 4.5Z" clip-rule="evenodd" /></svg>`;
+            } else if (fileName.toLowerCase().endsWith('.png')) {
+                // PNG Icon
+                iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-teal-500"><path fill-rule="evenodd" d="M11.54 22.351A2.43 2.43 0 0 1 9 20.25c0-.663.537-1.2.1-1.2h4.8c-.437 0-1.1.537-1.1 1.2a2.43 2.43 0 0 1-2.54 2.094ZM2.518 13.5A.75.75 0 0 1 3.25 12h17.5a.75.75 0 0 1 .732 1.5H3.25a.75.75 0 0 1-.732-1.5Z" clip-rule="evenodd" /><path d="M12 3.75a3.75 3.75 0 0 0-3.75 3.75v10.5c0 1.258.974 2.378 2.222 2.493l.399.03V3.75Zm3.75 3.75a3.75 3.75 0 0 0-3.75-3.75V20.57c1.248-.115 2.222-1.235 2.222-2.493V7.5Z" /></svg>`;
+            } else {
+                // Generic File Icon
+                iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-gray-500"><path fill-rule="evenodd" d="M19.957 2.126a.75.75 0 0 0-.256-.125c-.754-.25-1.554-.374-2.36-.374H9.75a.75.75 0 0 0-.75.75v.25a.75.75 0 0 0 .75.75h9.814a49.336 49.336 0 0 1 1.761.464c.243.095.456.248.627.457.17.209.288.468.337.755.053.303.079.62.079.948V18a.75.75 0 0 1-.75.75H4.896a.75.75 0 0 1-.75-.75V7.896a.75.75 0 0 0-1.5 0V18a2.25 2.25 0 0 0 2.25 2.25h15.75A2.25 2.25 0 0 0 22.5 18V4.896a2.25 2.25 0 0 0-2.25-2.25h-3.328ZM12 6a.75.75 0 0 1 .75.75V11.5a.75.75 0 0 1-1.5 0V6.75A.75.75 0 0 1 12 6ZM8.75 9a.75.75 0 0 1 0-1.5H15a.75.75 0 0 1 0 1.5H8.75Z" clip-rule="evenodd" /></svg>`;
+            }
+
+            let reductionText = '';
+            if (isReduced) {
+                reductionText = `SAVED ${reductionValue}%`;
+            } else if (isIncreased) {
+                reductionText = `INCREASED +${reductionValue}%`;
+            } else {
+                reductionText = 'LOSSLESS';
+            }
+            
+            // New tag classes for improved look
+            const tagBg = isReduced ? 'bg-green-600' : (isIncreased ? 'bg-red-600' : 'bg-yellow-500');
+            const tagText = 'text-white'; // White text always looks sharp on colored tags
+
+            // The main card styling
+            return `
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border-l-8 border-primary-blue dark:border-blue-500 transition-all duration-300 transform hover:shadow-xl hover:scale-[1.005]" 
+                     data-download-url="${downloadUrl}" 
+                     data-file-name="${fileName}"
+                     style="opacity: 1; transition: opacity 0.3s, transform 0.3s;">
+                    
+                    <div class="mb-3 sm:mb-0 min-w-0 flex-grow flex items-center space-x-4">
+                        <div class="flex-shrink-0">${iconSvg}</div>
+                        
+                        <div>
+                            <p class="font-extrabold text-gray-800 dark:text-gray-100 break-words text-lg">${fileName}</p>
+                            
+                            <div class="flex items-center space-x-4 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                <span>Original: <span class="font-semibold">${formatSize(originalSize)}</span></span>
+                                <span class="text-gray-400 dark:text-gray-600">→</span>
+                                <span>Compressed: <span class="font-extrabold ${sizeColor}">${formatSize(compressedSize)}</span></span>
+                            </div>
+
+                            <span class="inline-block px-3 py-0.5 mt-2 text-xs font-bold rounded-full ${tagBg} ${tagText} shadow-md uppercase tracking-wider">
+                                ${reductionText}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-3 mt-3 sm:mt-0 w-full sm:w-auto">
+                        <a href="${downloadUrl}" download="${fileName}" class="flex-1 sm:flex-none px-6 py-2 text-sm font-semibold rounded-xl shadow-md text-white bg-green-500 hover:bg-green-600 transition duration-200 transform hover:scale-[1.03] text-center">
+                            Download
+                        </a>
+                        <button onclick="deleteResultItem(this)" class="flex-none p-3 rounded-xl text-red-600 bg-red-100 hover:bg-red-200 dark:bg-red-800 dark:text-red-200 dark:hover:bg-red-700 transition duration-200 shadow-md transform hover:scale-[1.05]" aria-label="Delete item">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.516 6.556m18.471.216a.75.75 0 00-.979-.756h-17.78a.75.75 0 00-.978.756v.294a.75.75 0 00.978.756h17.78a.75.75 0 00.979-.756V6.772z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+        };
+
+        const generateErrorItem = (fileName, message) => {
+            return `
+                <div class="p-4 bg-red-50 dark:bg-red-950 rounded-2xl shadow-inner border border-red-400 dark:border-red-600 flex items-center space-x-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0">
+                        <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75ZM12 15a.75.75 0 0 0-.75.75v.008a.75.75 0 0 0 1.5 0v-.008A.75.75 0 0 0 12 15Z" clip-rule="evenodd" />
+                    </svg>
+                    <div>
+                        <p class="font-bold text-red-800 dark:text-red-300">File Failed: ${fileName}</p>
+                        <p class="text-sm text-red-600 dark:text-red-400 mt-0.5">Reason: ${message}</p>
+                    </div>
+                </div>
+            `;
+        };
+
+
+        // --- EVENT LISTENERS AND INITIAL SETUP ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set initial theme toggle text
+            themeToggle.textContent = htmlElement.classList.contains('dark') ? '☀️' : '🌙';
+            
+            // Set WebP as default output format
+            outputFormatSelect.value = 'image/webp';
+
+            // 1. File Input Listener
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFiles(e.target.files);
+                }
+            });
+
+            // 2. Drag & Drop Listeners
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            // Highlight drop area when dragging over
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => dropArea.classList.add('shadow-xl', 'border-opacity-75', 'scale-[1.01]', 'ring-4', 'ring-primary-blue/50'), false);
+            });
+
+            // Unhighlight drop area
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => dropArea.classList.remove('shadow-xl', 'border-opacity-75', 'scale-[1.01]', 'ring-4', 'ring-primary-blue/50'), false);
+            });
+
+            // Handle the drop event
+            dropArea.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            }, false);
+
+            function preventDefaults (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            // 3. Quality Slider Interaction
+            document.getElementById('qualityValue').textContent = qualitySlider.value + '%';
+            
+            // 4. Footer Year Update
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+        });
+
+    </script>
+
+</body>
+</html>
